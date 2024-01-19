@@ -24,6 +24,8 @@ fn main() {
         3 => println!("Are you sure you want to exit?"),
         _ => panic!("Program encountered an error: 1"),
     };
+
+    println!("Small test git change")
 }
 
 fn get_input_number(max:u32) -> u32 {
