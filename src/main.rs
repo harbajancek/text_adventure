@@ -1,4 +1,4 @@
-use std::io;
+use std::{io};
 
 fn main() {
     let title = r#"
@@ -11,13 +11,24 @@ fn main() {
 "#
     .trim_matches('\n');
 
-    let empty_scene: Scene = Scene {id: String::from("empty"), choices: Option::None, text: String::new()};
-    let mut choices = vec![
+    //let empty_scene: Scene = Scene {id: String::from("empty"), choices: None, text: String::new(), ..Default::default()};
+
+    let mut ending_choices = vec![
+        Choice {display_name: String::from("No"), ..Default::default()},
+        Choice {display_name: String::from("Yes"), ..Default::default()},
+    ];
+
+    let ending_scene = Scene {id: String::from("end"), choices: Some(ending_choices), text: String::from("Are you sure you want to exit the game?"), ..Default::default()};
+
+    let intro_choices = vec![
         Choice {display_name: String::from("Start"), ..Default::default()},
         Choice {display_name: String::from("Load"), ..Default::default()},
         Choice {display_name: String::from("Options"), ..Default::default()},
-        Choice {display_name: String::from("End"), ..Default::default()}];
-    let intro_scene = Scene { id: String::from("intro"), choices: Option::Some(choices), text: String::from(title)};
+        Choice {display_name: String::from("End"), next_scene: Some(Box::from(ending_scene)), ..Default::default()}];
+
+    let intro_scene = Scene { id: String::from("intro"), choices: Some(intro_choices), text: String::from(title), ..Default::default()};
+
+    ending_choices[0].next_scene = Some(Box::from(&intro_scene).);
 
     let mut global_vars = GlobalVars {
         ..Default::default()
@@ -26,7 +37,11 @@ fn main() {
     let mut current_scene = &intro_scene;
 
     loop {
-        process_scene(&mut current_scene);
+        if let Some(scene) = process_scene(&current_scene) {
+            current_scene = &scene;
+        } else {
+            break;
+        }
     }
 }
 
@@ -54,8 +69,10 @@ fn get_choice_input(max: usize) -> usize {
     }
 }
 
-fn process_scene(current_scene : &mut Scene) {
+fn process_scene(current_scene : &Scene) -> Option<&Scene>{
     println!("{}", current_scene.text);
+
+    let next_scene: Option<&Scene>;
 
     if let Some(choices) = &current_scene.choices {
         for (i, choice) in choices.iter().enumerate() {
@@ -67,13 +84,17 @@ fn process_scene(current_scene : &mut Scene) {
         if let Some(text) = choice.text {
             println!("{text}");
         }
-
-        current_scene = choice.next_scene;
+        
+        next_scene = choice.next_scene.as_deref();
     } else {
         println!("1 - Continue");
+
         get_choice_input(1);
-        current_scene = current_scene.next_scene.expect("Can't change scene - next scene variable is empty.")
+
+        next_scene = current_scene.next_scene.as_deref();
     }
+
+    next_scene
 }
 
 #[derive(Default)]
@@ -84,7 +105,7 @@ struct GlobalVars {
 
 #[derive(Default)]
 struct Choice {
-    next_scene: Option<Scene>,
+    next_scene: Option<Box<Scene>>,
     display_name: String,
     text: Option<String>,
     changes: Option<fn() -> ()>,
@@ -95,5 +116,5 @@ struct Scene {
     id: String,
     choices: Option<Vec<Choice>>,
     text: String,
-    next_scene: Option<Scene>,
+    next_scene: Option<Box<Scene>>,
 }
